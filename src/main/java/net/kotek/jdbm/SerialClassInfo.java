@@ -11,6 +11,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.esotericsoftware.reflectasm.FieldAccess;
+import com.esotericsoftware.reflectasm.MethodAccess;
+
 /**
  * This class stores information about serialized classes and fields.
  */
@@ -132,7 +135,11 @@ abstract class SerialClassInfo {
      * Stores info about single field stored in JDBM.
      * Roughly corresponds to 'java.io.ObjectFieldClass'
      */
-    static class FieldInfo {    	
+    static class FieldInfo {
+    	// If set, then ASM framework will be used to
+    	// generate very fast getters and setters
+    	static private boolean useASM = true;
+    	
         private final String name;
         private final boolean primitive;
         private final String type;
@@ -171,7 +178,18 @@ abstract class SerialClassInfo {
 				try {
 					Method m = aClazz.getMethod(setterName, typeClass);
 					if (m != null) {
-						setter = m;
+
+						if (useASM) {
+							MethodAccess methodAccess = MethodAccess
+									.get(aClazz);
+							int methodIndex = methodAccess.getIndex(setterName);
+
+							setter = methodAccess;
+							setterIndex = methodIndex;
+						} else {
+							setter = m;
+						}
+						
 						return;
 					}
 				} catch (Exception e) {
@@ -180,11 +198,18 @@ abstract class SerialClassInfo {
 
 				// no get method, access field directly
 				try {
-					Field f = aClazz.getDeclaredField(name);
-					// security manager may not be happy about this
-					if (!f.isAccessible())
-						f.setAccessible(true);
-					setter = f;
+					if (useASM) {
+						FieldAccess fieldAccess = FieldAccess.get(aClazz);
+						int fieldIndex = fieldAccess.getIndex(name);
+						setter = fieldAccess;
+						setterIndex = fieldIndex;
+					} else {
+						Field f = aClazz.getDeclaredField(name);
+						// security manager may not be happy about this
+						if (!f.isAccessible())
+							f.setAccessible(true);
+						setter = f;
+					}
 					return;
 				} catch (Exception e) {
 //					e.printStackTrace();
@@ -207,7 +232,16 @@ abstract class SerialClassInfo {
 				try {
 					Method m = aClazz.getMethod(getterName);
 					if (m != null) {
-						getter = m;
+						if (useASM) {
+							MethodAccess methodAccess = MethodAccess
+									.get(aClazz);
+							int methodIndex = methodAccess.getIndex(getterName);
+							
+							getter = methodAccess;
+							getterIndex = methodIndex;
+						} else {
+							getter = m;
+						}
 						return;
 					}
 				} catch (Exception e) {
@@ -216,11 +250,18 @@ abstract class SerialClassInfo {
 
 				// no get method, access field directly
 				try {
-					Field f = aClazz.getDeclaredField(name);
-					// security manager may not be happy about this
-					if (!f.isAccessible())
-						f.setAccessible(true);
-					getter = f;
+					if (useASM) {
+						FieldAccess fieldAccess = FieldAccess.get(aClazz);
+						int fieldIndex = fieldAccess.getIndex(name);
+						getter = fieldAccess;
+						getterIndex = fieldIndex;
+					} else {
+						Field f = aClazz.getDeclaredField(name);
+						// security manager may not be happy about this
+						if (!f.isAccessible())
+							f.setAccessible(true);
+						getter = f;
+					}
 					return;
 				} catch (Exception e) {
 //					e.printStackTrace();
@@ -335,7 +376,13 @@ abstract class SerialClassInfo {
 		
 		Object fieldAccessor = fieldInfo.getter;
 		try {
-			if (fieldAccessor instanceof Method) {
+			if (fieldAccessor instanceof MethodAccess) {
+				MethodAccess access = (MethodAccess) fieldAccessor;
+				return access.invoke(object, fieldInfo.getterIndex);
+			} else if (fieldAccessor instanceof FieldAccess) {
+				FieldAccess access = (FieldAccess) fieldAccessor;
+				return access.get(object, fieldInfo.getterIndex);
+			} else if (fieldAccessor instanceof Method) {
 				Method m = (Method) fieldAccessor;
 				return m.invoke(object);
 			} else {
@@ -363,7 +410,13 @@ abstract class SerialClassInfo {
 		
 		Object fieldAccessor = fieldInfo.setter;
 		try {
-			if (fieldAccessor instanceof Method) {
+			if (fieldAccessor instanceof MethodAccess) {
+				MethodAccess access = (MethodAccess) fieldAccessor;
+				access.invoke(object, fieldInfo.setterIndex, value);
+			} else if (fieldAccessor instanceof FieldAccess) {
+				FieldAccess access = (FieldAccess) fieldAccessor;
+				access.set(object, fieldInfo.setterIndex, value);
+			} else if (fieldAccessor instanceof Method) {
 				Method m = (Method) fieldAccessor;
 				m.invoke(object, value);
 			} else {

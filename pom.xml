@@ -26,6 +26,13 @@
     </properties>
 
     <dependencies>
+		<dependency>
+			<groupId>com.googlecode</groupId>
+			<artifactId>reflectasm</artifactId>
+			<version>1.01</version>
+            <type>jar</type>
+            <optional>false</optional>
+		</dependency>
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
