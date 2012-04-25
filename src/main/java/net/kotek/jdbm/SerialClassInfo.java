@@ -168,7 +168,6 @@ abstract class SerialClassInfo {
 		private void initSetter() {
 			// Set setter
 			String setterName = "set" + firstCharCap(name);
-			String fieldSetterName = clazz.getName() + "#" + setterName;
 
 			Class aClazz = clazz; 
 			
@@ -222,7 +221,6 @@ abstract class SerialClassInfo {
 		private void initGetter() {
 			// Set setter
 			String getterName = "get" + firstCharCap(name);
-			String fieldSetterName = clazz.getName() + "#" + getterName;
 
 			Class aClazz = clazz; 
 			
@@ -515,16 +513,16 @@ abstract class SerialClassInfo {
     }
 
     //TODO dependecy on nonpublic JVM API
-    static private sun.reflect.ReflectionFactory rf =
+    private sun.reflect.ReflectionFactory rf =
             sun.reflect.ReflectionFactory.getReflectionFactory();
     
-    private static Map<Class, Constructor> class2constuctor = new HashMap<Class, Constructor>();
+    private Map<Class, Constructor> class2constuctor = new HashMap<Class, Constructor>();
     
     /**
      * Little trick to create new instance without using constructor.
      * Taken from http://www.javaspecialists.eu/archive/Issue175.html
      */
-    private static <T> T createInstance(Class<T> clazz, Class<? super T> parent) {
+    private <T> T createInstance(Class<T> clazz, Class<? super T> parent) {
 
         try {
         	Constructor intConstr = class2constuctor.get(clazz);
