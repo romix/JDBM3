@@ -315,7 +315,6 @@ public class SerializationTest extends TestCase {
 
         assertEquals(header1, header2);
         assertEquals(header1, SerializationHeader.JAVA_SERIALIZATION);
-        System.out.println("serialization header: " + header1);
     }
 
     public void testPackedLongCollection() throws ClassNotFoundException, IOException {
@@ -401,6 +400,61 @@ public class SerializationTest extends TestCase {
     }
 
 
+    public void testLocale() throws Exception{
+        assertEquals(Locale.FRANCE, ser.deserialize(ser.serialize(Locale.FRANCE)));
+        assertEquals(Locale.CANADA_FRENCH, ser.deserialize(ser.serialize(Locale.CANADA_FRENCH)));
+        assertEquals(Locale.SIMPLIFIED_CHINESE, ser.deserialize(ser.serialize(Locale.SIMPLIFIED_CHINESE)));
 
+    }
+
+    enum Order
+    {
+        ASCENDING,
+        DESCENDING
+    }
+    public void testEnum() throws Exception{
+        Order o = Order.ASCENDING;
+        o = (Order) ser.deserialize(ser.serialize(o));
+        assertEquals(o,Order.ASCENDING );
+        assertEquals(o.ordinal(),Order.ASCENDING .ordinal());
+        assertEquals(o.name(),Order.ASCENDING .name());
+
+        o = Order.DESCENDING;
+        o = (Order) ser.deserialize(ser.serialize(o));
+        assertEquals(o,Order.DESCENDING );
+        assertEquals(o.ordinal(),Order.DESCENDING .ordinal());
+        assertEquals(o.name(),Order.DESCENDING .name());
+
+    }
+
+
+    static class Extr implements  Externalizable{
+
+        int aaa = 11;
+        String  l = "agfa";
+
+        public void writeExternal(ObjectOutput out) throws IOException {
+            out.writeObject(l);
+            out.writeInt(aaa);
+
+        }
+
+        public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
+            l = (String) in.readObject();
+            aaa = in.readInt()+1;
+
+        }
+    }
+
+    public void testExternalizable() throws Exception{
+        Extr e = new Extr();
+        e.aaa = 15;
+        e.l = "pakla";
+
+        e = (Extr) ser.deserialize(ser.serialize(e));
+        assertEquals(e.aaa,16); //was incremented during serialization
+        assertEquals(e.l,"pakla");
+
+    }
 
 }

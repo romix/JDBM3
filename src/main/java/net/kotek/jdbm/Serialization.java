@@ -21,8 +21,6 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.*;
 
-import net.kotek.jdbm.SerialClassInfo.ClassInfo;
-
 import static net.kotek.jdbm.SerializationHeader.*;
 
 /**
@@ -58,7 +56,7 @@ public class Serialization extends SerialClassInfo implements Serializer {
     public Serialization() {
         super(null,0L,new ArrayList<ClassInfo>());
         // Add java.lang.Object as registered class
-        registered.add(new ClassInfo(Object.class.getName(), new FieldInfo[]{}));
+        registered.add(new ClassInfo(Object.class.getName(), new FieldInfo[]{},false,false));
     }
 
     /**
@@ -66,11 +64,10 @@ public class Serialization extends SerialClassInfo implements Serializer {
      */
     public byte[] serialize(Object obj)
             throws IOException {
-        ByteArrayOutputStream ba = new ByteArrayOutputStream();
-        DataOutputStream da = new DataOutputStream(ba);
-        serialize(da, obj);
+        DataInputOutput ba = new DataInputOutput();
 
-        da.close();
+        serialize(ba, obj);
+
         return ba.toByteArray();
     }
 
@@ -387,6 +384,12 @@ public class Serialization extends SerialClassInfo implements Serializer {
             serializeMap(HASHTABLE, out, obj, objectStack);
         } else if (clazz == Properties.class) {
             serializeMap(PROPERTIES, out, obj, objectStack);
+        } else if (clazz == Locale.class){
+            out.write(LOCALE);
+            Locale l = (Locale) obj;
+            out.writeUTF(l.getLanguage());
+            out.writeUTF(l.getCountry());
+            out.writeUTF(l.getVariant());
         } else {
             out.write(NORMAL);
             writeObject(out, obj, objectStack);
@@ -588,9 +591,8 @@ public class Serialization extends SerialClassInfo implements Serializer {
      * @throws ClassNotFoundException
      */
     public Object deserialize(byte[] buf) throws ClassNotFoundException, IOException {
-        ByteArrayInputStream bs = new ByteArrayInputStream(buf);
-        DataInputStream das = new DataInputStream(bs);
-        Object ret = deserialize(das);
+        DataInputOutput bs = new DataInputOutput(buf);
+        Object ret = deserialize(bs);
         if (bs.available() != 0)
             throw new InternalError("bytes left: " + bs.available());
 
@@ -857,6 +859,9 @@ public class Serialization extends SerialClassInfo implements Serializer {
                 break;
             case ARRAY_BYTE_INT:
                 ret = deserializeArrayByteInt(is);
+                break;
+            case LOCALE :
+                ret = new Locale(is.readUTF(),is.readUTF(),is.readUTF());
                 break;
             case JDBMLINKEDLIST:
                 ret = LinkedList2.deserialize(is, this);
